@@ -28,14 +28,14 @@ def password_protection():
         return False
     return True
 
-# Decimal Consistency Validation
-def validate_decimal_consistency(slide, slide_index):
+# Million Notation Validation
+def validate_million_notations(slide, slide_index):
     issues = []
-    decimal_pattern = re.compile(r'\d+[\.,]\d+')  # Pattern to match decimal numbers with either '.' or ','
-    decimal_places_set = set()
+    million_patterns = [r'\b\d+M\b', r'\b\d+\s?Million\b', r'\b\d+mn\b', r'\b\d+\sm\b']  # Patterns to match million notations
+    notation_set = set()
     all_matches = []
 
-    logging.debug(f"Slide {slide_index}: Checking shapes")
+    logging.debug(f"Slide {slide_index}: Checking shapes for million notations")
     for shape in slide.shapes:
         if not shape.has_text_frame:
             logging.debug(f"Slide {slide_index}: Shape without text frame skipped")
@@ -44,23 +44,22 @@ def validate_decimal_consistency(slide, slide_index):
         logging.debug(f"Slide {slide_index}: Text frame detected")
         for paragraph in shape.text_frame.paragraphs:
             for run in paragraph.runs:
-                matches = decimal_pattern.findall(run.text)
-                logging.debug(f"Slide {slide_index}: Found matches - {matches}")
-                all_matches.extend(matches)
-                for match in matches:
-                    logging.debug(f"Slide {slide_index}: Processing match - {match}")
-                    decimal_places = len(match.split(',')[1] if ',' in match else match.split('.')[1])
-                    decimal_places_set.add(decimal_places)
+                for pattern in million_patterns:
+                    matches = re.findall(pattern, run.text, re.IGNORECASE)
+                    logging.debug(f"Slide {slide_index}: Found matches with pattern {pattern} - {matches}")
+                    all_matches.extend(matches)
+                    for match in matches:
+                        notation_set.add(pattern)
 
-    logging.debug(f"Slide {slide_index}: Decimal places set - {decimal_places_set}")
-    if len(decimal_places_set) > 1:
+    logging.debug(f"Slide {slide_index}: Notation set - {notation_set}")
+    if len(notation_set) > 1:
         for match in all_matches:
-            logging.debug(f"Slide {slide_index}: Inconsistent decimal detected - {match}")
+            logging.debug(f"Slide {slide_index}: Inconsistent million notation detected - {match}")
             issues.append({
                 'slide': slide_index,
-                'issue': 'Inconsistent Decimal Points',
+                'issue': 'Inconsistent Million Notations',
                 'text': match,
-                'details': f'Found inconsistent decimal points: {list(decimal_places_set)}'
+                'details': f'Found inconsistent million notations: {list(notation_set)}'
             })
 
     return issues
@@ -76,7 +75,7 @@ def main():
     if not password_protection():
         return
 
-    st.title("Decimal Consistency Validator")
+    st.title("Million Notations Validator")
     uploaded_file = st.file_uploader("Upload a PowerPoint file", type=["pptx"])
 
     if uploaded_file:
@@ -90,7 +89,7 @@ def main():
             logging.debug(f"Total slides: {total_slides}")
 
             # Run Validation
-            if st.button("Run Decimal Validation"):
+            if st.button("Run Million Notations Validation"):
                 progress_bar = st.progress(0)
                 progress_text = st.empty()
                 issues = []
@@ -99,25 +98,25 @@ def main():
                 for slide_index in range(total_slides):
                     slide = presentation.slides[slide_index]
                     logging.debug(f"Validating slide {slide_index + 1}")
-                    slide_issues = validate_decimal_consistency(slide, slide_index + 1)
+                    slide_issues = validate_million_notations(slide, slide_index + 1)
                     issues.extend(slide_issues)
                     progress_percent = int((slide_index + 1) / total_slides * 100)
                     progress_text.text(f"Progress: {progress_percent}%")
                     progress_bar.progress(progress_percent / 100)
 
                 # Save Results
-                csv_output_path = Path(tmpdir) / "decimal_validation_report.csv"
+                csv_output_path = Path(tmpdir) / "million_notations_validation_report.csv"
                 save_to_csv(issues, csv_output_path)
 
                 # Store results in session state
                 st.session_state['csv_output'] = csv_output_path.read_bytes()
 
-                st.success("Decimal validation completed!")
+                st.success("Million notations validation completed!")
 
             # Display Download Buttons
             if 'csv_output' in st.session_state:
                 st.download_button("Download Validation Report (CSV)", st.session_state['csv_output'],
-                                   file_name="decimal_validation_report.csv")
+                                   file_name="million_notations_validation_report.csv")
 
 if __name__ == "__main__":
     main()
