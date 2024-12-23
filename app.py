@@ -31,7 +31,12 @@ def password_protection():
 # Million Notation Validation
 def validate_million_notations(slide, slide_index):
     issues = []
-    million_patterns = [r'\b\d+M\b', r'\b\d+\s?Million\b', r'\b\d+mn\b', r'\b\d+\sm\b']  # Patterns to match million notations
+    million_patterns = {
+        r'\b\d+M\b': 'M',
+        r'\b\d+\s?Million\b': 'Million',
+        r'\b\d+mn\b': 'mn',
+        r'\b\d+\sm\b': 'm'
+    }  # Patterns to match million notations
     notation_set = set()
     all_matches = []
 
@@ -44,12 +49,12 @@ def validate_million_notations(slide, slide_index):
         logging.debug(f"Slide {slide_index}: Text frame detected")
         for paragraph in shape.text_frame.paragraphs:
             for run in paragraph.runs:
-                for pattern in million_patterns:
+                for pattern, notation in million_patterns.items():
                     matches = re.findall(pattern, run.text, re.IGNORECASE)
                     logging.debug(f"Slide {slide_index}: Found matches with pattern {pattern} - {matches}")
                     all_matches.extend(matches)
                     for match in matches:
-                        notation_set.add(pattern)
+                        notation_set.add(notation)
 
     logging.debug(f"Slide {slide_index}: Notation set - {notation_set}")
     if len(notation_set) > 1:
